@@ -78,7 +78,7 @@ if(GRAINLATCH_BUILD_PLUGIN)
         COMPANY_NAME "EsionHsrahLatigid"
         BUNDLE_ID "jp.ehl.grainlatch"
         PRODUCT_NAME "GrainLatch"
-        DESCRIPTION "Live granular latch and freeze effect"
+        DESCRIPTION "Live granular freeze and damage effect"
         PLUGIN_MANUFACTURER_CODE EHL_
         PLUGIN_CODE GrLt
         AU_SANDBOX_SAFE TRUE
