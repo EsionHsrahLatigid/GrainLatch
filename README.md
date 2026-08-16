@@ -1,8 +1,8 @@
 # GrainLatch
 
-GrainLatch is an EsionHsrahLatigid live granular latch, freeze, and buffer-fracture effect for VST3, AU, and Standalone hosts.
+GrainLatch is an EsionHsrahLatigid live granular damage, freeze, and recovery effect for VST3, AU, and Standalone hosts.
 
-It captures incoming audio into a bounded preallocated ring and emits short grains from the live, latched, or held source. The public control set is grain size, density, pitch, position, dispersion, latch, freeze, feedback, mix, and output. Silence remains silent unless Freeze is holding captured material.
+It captures incoming audio into a bounded preallocated ring and emits short grains from the live or held source. The public control set is grain size, density, jitter, reverse, stutter, freeze, retrigger, damage, mix, and output. Silence remains silent unless Freeze is holding captured material.
 
 ## Research Basis
 
@@ -14,12 +14,12 @@ GrainLatch is differentiated from generic offline granular tools by its source-a
 
 - `grainMs`: 3.0..220.0 ms, default 38.0
 - `density`: 1.0..220.0 grains/s, default 42.0
-- `pitch`: -24..24 semitones, default 0.0
-- `position`: 0..1 capture offset, default 0.35
-- `dispersion`: 0..1 timing/pitch/stride spread, default 0.22
-- `latch`: hold the current traversal anchor, default off
+- `jitter`: 0..1, default 0.22
+- `reverse`: 0..1, default 0.18
+- `stutter`: 0..1, default 0.20
 - `freeze`: live capture hold, default off
-- `feedback`: 0..0.92, default 0.18
+- `retrigger`: force grain restart pressure, default off
+- `damage`: deterministic sign/stride corruption and saturation, default 0.34
 - `mix`: 0..1, default 0.75
 - `output`: -24..12 dB, default 0.0
 

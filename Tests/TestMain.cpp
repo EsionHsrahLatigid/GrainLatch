@@ -104,7 +104,7 @@ void silence_stays_silent_without_held_grain()
 {
     GranularParameters params;
     params.mix = 1.0f;
-    params.dispersion = 1.0f;
+    params.damage = 1.0f;
     params.density = 220.0f;
     const std::vector<float> silence(48000, 0.0f);
     const auto metrics = measure(render(params, silence));
@@ -132,10 +132,10 @@ void extremes_are_harsh_but_bounded()
     GranularParameters params;
     params.grainMs = 3.0f;
     params.density = 220.0f;
-    params.pitchSemitones = -19.0f;
-    params.position = 0.9f;
-    params.dispersion = 1.0f;
-    params.feedback = 0.92f;
+    params.jitter = 1.0f;
+    params.reverse = 1.0f;
+    params.stutter = 1.0f;
+    params.damage = 1.0f;
     params.mix = 1.0f;
     params.outputDb = 12.0f;
     const auto metrics = measure(render(params, seededNoise(48000 * 2)));
@@ -168,7 +168,7 @@ void freeze_holds_capture_and_empty_freeze_is_silent()
 
     std::vector<float> frozen;
     hold.density = 120.0f;
-    hold.dispersion = 0.55f;
+    hold.damage = 0.55f;
     for (int i = 0; i < 48000; ++i)
         frozen.push_back(core.processSample(0.0f, hold));
 
@@ -181,45 +181,6 @@ void freeze_holds_capture_and_empty_freeze_is_silent()
     core.copySnapshot(snapshot);
     expect(snapshot.frozen, "snapshot should report frozen state");
     expect(snapshot.heldRms > 0.001f, "snapshot should report held energy");
-}
-
-void pitch_position_latch_and_feedback_change_the_render()
-{
-    const auto input = seededNoise(48000 * 2);
-
-    GranularParameters base;
-    base.mix = 1.0f;
-    base.density = 90.0f;
-    base.dispersion = 0.15f;
-
-    auto pitched = base;
-    pitched.pitchSemitones = 12.0f;
-    expect(render(base, input) != render(pitched, input), "pitch should alter deterministic grain traversal");
-
-    auto positioned = base;
-    positioned.position = 0.85f;
-    expect(render(base, input) != render(positioned, input), "position should alter deterministic buffer anchor");
-
-    auto fedBack = base;
-    fedBack.feedback = 0.85f;
-    const auto feedbackMetrics = measure(render(fedBack, input));
-    expect(feedbackMetrics.rms > 0.015f && feedbackMetrics.peak <= 0.981f,
-           "feedback should stay audible and bounded");
-
-    GranularCore freeRun;
-    freeRun.prepare(48000.0, 1);
-    GranularCore latched;
-    latched.prepare(48000.0, 1);
-    std::vector<float> freeOutput;
-    std::vector<float> latchOutput;
-    auto latchParams = base;
-    for (std::size_t i = 0; i < input.size(); ++i)
-    {
-        freeOutput.push_back(freeRun.processSample(input[i], base));
-        latchParams.latch = i > 16000;
-        latchOutput.push_back(latched.processSample(input[i], latchParams));
-    }
-    expect(freeOutput != latchOutput, "latch should hold a traversal anchor after engagement");
 }
 
 void reset_and_sample_rate_change_are_defined()
@@ -245,7 +206,6 @@ int main()
         default_live_capture_is_audible_and_deterministic();
         extremes_are_harsh_but_bounded();
         freeze_holds_capture_and_empty_freeze_is_silent();
-        pitch_position_latch_and_feedback_change_the_render();
         reset_and_sample_rate_change_are_defined();
     }
     catch (const Failure& failure)

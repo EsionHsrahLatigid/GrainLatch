@@ -67,8 +67,8 @@ int main()
                         "editor should expose the live grain field");
         passed &= check(editor->findChildWithID("grainlatch-control-size") != nullptr,
                         "editor should expose the grain size control");
-        passed &= check(editor->findChildWithID("grainlatch-latch") != nullptr,
-                        "editor should expose the latch control");
+        passed &= check(editor->findChildWithID("grainlatch-retrigger") != nullptr,
+                        "editor should expose the retrigger control");
         passed &= check(editor->findChildWithID("grainlatch-freeze") != nullptr,
                         "editor should expose the freeze control");
         editor->setBounds(0, 0, 512, 320);
@@ -84,34 +84,34 @@ int main()
                     "processor should expose exactly ten public controls");
     passed &= checkFloatParameter(*processor, grainlatch::parameters::grainMs, 3.0f, 220.0f, 0.1f, 38.0f);
     passed &= checkFloatParameter(*processor, grainlatch::parameters::density, 1.0f, 220.0f, 0.1f, 42.0f);
-    passed &= checkFloatParameter(*processor, grainlatch::parameters::pitch, -24.0f, 24.0f, 0.1f, 0.0f);
-    passed &= checkFloatParameter(*processor, grainlatch::parameters::position, 0.0f, 1.0f, 0.001f, 0.35f);
-    passed &= checkFloatParameter(*processor, grainlatch::parameters::dispersion, 0.0f, 1.0f, 0.001f, 0.22f);
-    passed &= checkFloatParameter(*processor, grainlatch::parameters::feedback, 0.0f, 0.92f, 0.001f, 0.18f);
+    passed &= checkFloatParameter(*processor, grainlatch::parameters::jitter, 0.0f, 1.0f, 0.001f, 0.22f);
+    passed &= checkFloatParameter(*processor, grainlatch::parameters::reverse, 0.0f, 1.0f, 0.001f, 0.18f);
+    passed &= checkFloatParameter(*processor, grainlatch::parameters::stutter, 0.0f, 1.0f, 0.001f, 0.20f);
+    passed &= checkFloatParameter(*processor, grainlatch::parameters::damage, 0.0f, 1.0f, 0.001f, 0.34f);
     passed &= checkFloatParameter(*processor, grainlatch::parameters::mix, 0.0f, 1.0f, 0.001f, 0.75f);
     passed &= checkFloatParameter(*processor, grainlatch::parameters::output, -24.0f, 12.0f, 0.1f, 0.0f);
 
-    auto* latch = processor->parameters.getParameter(grainlatch::parameters::latch);
+    auto* retrigger = processor->parameters.getParameter(grainlatch::parameters::retrigger);
     auto* freeze = processor->parameters.getParameter(grainlatch::parameters::freeze);
-    passed &= check(dynamic_cast<juce::AudioParameterBool*>(latch) != nullptr, "Latch parameter should be a bool");
+    passed &= check(dynamic_cast<juce::AudioParameterBool*>(retrigger) != nullptr, "Retrigger parameter should be a bool");
     passed &= check(dynamic_cast<juce::AudioParameterBool*>(freeze) != nullptr, "Freeze parameter should be a bool");
 
     auto* density = processor->parameters.getParameter(grainlatch::parameters::density);
-    if (density != nullptr && freeze != nullptr && latch != nullptr)
+    if (density != nullptr && freeze != nullptr && retrigger != nullptr)
     {
         density->setValueNotifyingHost(density->convertTo0to1(123.0f));
-        latch->setValueNotifyingHost(1.0f);
+        retrigger->setValueNotifyingHost(1.0f);
         freeze->setValueNotifyingHost(1.0f);
         juce::MemoryBlock state;
         processor->getStateInformation(state);
         density->setValueNotifyingHost(density->convertTo0to1(12.0f));
-        latch->setValueNotifyingHost(0.0f);
+        retrigger->setValueNotifyingHost(0.0f);
         freeze->setValueNotifyingHost(0.0f);
         processor->setStateInformation(state.getData(), static_cast<int>(state.getSize()));
         passed &= check(std::abs(processor->parameters.getRawParameterValue(grainlatch::parameters::density)->load() - 123.0f) < 0.01f,
                         "APVTS float state should round-trip without transient ring capture");
-        passed &= check(processor->parameters.getRawParameterValue(grainlatch::parameters::latch)->load() > 0.5f,
-                        "APVTS latch state should round-trip");
+        passed &= check(processor->parameters.getRawParameterValue(grainlatch::parameters::retrigger)->load() > 0.5f,
+                        "APVTS retrigger state should round-trip");
         passed &= check(processor->parameters.getRawParameterValue(grainlatch::parameters::freeze)->load() > 0.5f,
                         "APVTS bool state should round-trip");
     }

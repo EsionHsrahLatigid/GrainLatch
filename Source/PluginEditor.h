@@ -43,8 +43,8 @@ private:
     juce::ToggleButton freezeButton;
     juce::ToggleButton retriggerButton;
     std::array<std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>, 8> sliderAttachments;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> freezeAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> retriggerAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> freezeAttachment;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GrainLatchAudioProcessorEditor)
 };

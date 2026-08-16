@@ -45,12 +45,12 @@ private:
     {
         std::atomic<float>* grainMs = nullptr;
         std::atomic<float>* density = nullptr;
-        std::atomic<float>* jitter = nullptr;
-        std::atomic<float>* reverse = nullptr;
-        std::atomic<float>* stutter = nullptr;
+        std::atomic<float>* pitch = nullptr;
+        std::atomic<float>* position = nullptr;
+        std::atomic<float>* dispersion = nullptr;
+        std::atomic<float>* latch = nullptr;
         std::atomic<float>* freeze = nullptr;
-        std::atomic<float>* retrigger = nullptr;
-        std::atomic<float>* damage = nullptr;
+        std::atomic<float>* feedback = nullptr;
         std::atomic<float>* mix = nullptr;
         std::atomic<float>* output = nullptr;
     } parameter;

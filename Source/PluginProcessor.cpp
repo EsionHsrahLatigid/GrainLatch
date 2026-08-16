@@ -38,9 +38,9 @@ Layout GrainLatchAudioProcessor::createParameterLayout()
     values.push_back(makeFloat(grainlatch::parameters::reverse, "Reverse", { 0.0f, 1.0f, 0.001f }, 0.18f));
     values.push_back(makeFloat(grainlatch::parameters::stutter, "Stutter", { 0.0f, 1.0f, 0.001f }, 0.20f));
     values.push_back(std::make_unique<juce::AudioParameterBool>(
-        juce::ParameterID { grainlatch::parameters::freeze, 1 }, "Freeze", false));
-    values.push_back(std::make_unique<juce::AudioParameterBool>(
         juce::ParameterID { grainlatch::parameters::retrigger, 1 }, "Retrigger", false));
+    values.push_back(std::make_unique<juce::AudioParameterBool>(
+        juce::ParameterID { grainlatch::parameters::freeze, 1 }, "Freeze", false));
     values.push_back(makeFloat(grainlatch::parameters::damage, "Damage", { 0.0f, 1.0f, 0.001f }, 0.34f));
     values.push_back(makeFloat(grainlatch::parameters::mix, "Mix", { 0.0f, 1.0f, 0.001f }, 0.75f));
     values.push_back(makeFloat(grainlatch::parameters::output, "Output", { -24.0f, 12.0f, 0.1f }, 0.0f));
@@ -54,8 +54,8 @@ void GrainLatchAudioProcessor::cacheParameterPointers()
     parameter.jitter = parameters.getRawParameterValue(grainlatch::parameters::jitter);
     parameter.reverse = parameters.getRawParameterValue(grainlatch::parameters::reverse);
     parameter.stutter = parameters.getRawParameterValue(grainlatch::parameters::stutter);
-    parameter.freeze = parameters.getRawParameterValue(grainlatch::parameters::freeze);
     parameter.retrigger = parameters.getRawParameterValue(grainlatch::parameters::retrigger);
+    parameter.freeze = parameters.getRawParameterValue(grainlatch::parameters::freeze);
     parameter.damage = parameters.getRawParameterValue(grainlatch::parameters::damage);
     parameter.mix = parameters.getRawParameterValue(grainlatch::parameters::mix);
     parameter.output = parameters.getRawParameterValue(grainlatch::parameters::output);

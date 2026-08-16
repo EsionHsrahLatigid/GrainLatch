@@ -199,8 +199,6 @@ void GranularCore::maybeLaunchGrain(const GranularParameters& parameters) noexce
 {
     const auto density = std::clamp(sanitize(parameters.density), 1.0f, 220.0f);
     --nextGrainIn;
-    if (parameters.retrigger > 0.5f)
-        nextGrainIn = 0;
     if (nextGrainIn > 0)
         return;
 
@@ -237,9 +235,9 @@ void GranularCore::launchGrain(const GranularParameters& parameters) noexcept
                                          8,
                                          std::min(maxGrainSamples, std::max(16, available)));
     const auto window = std::min(available, usableRing - 1);
+    const auto stutter = clamp01(parameters.stutter);
     const auto damage = clamp01(parameters.damage);
-    const auto position = clamp01(parameters.position);
-    const auto localSpan = std::max(grainSamples, static_cast<int>(static_cast<float>(window) * (0.04f + dispersion * 0.96f)));
+    const auto localSpan = std::max(grainSamples, static_cast<int>(static_cast<float>(window) * (1.0f - stutter)));
     const auto maxOffset = std::max(grainSamples, localSpan);
     const auto randomOffset = static_cast<int>(random01() * static_cast<float>(maxOffset - grainSamples + 1));
     const auto anchor = parameters.freeze ? freezeAnchor : writeIndex;
@@ -248,15 +246,13 @@ void GranularCore::launchGrain(const GranularParameters& parameters) noexcept
         start += usableRing;
 
     target->read = static_cast<float>(start % usableRing);
-    const auto pitch = std::clamp(sanitize(parameters.pitchSemitones), -24.0f, 24.0f);
-    const auto pitchScatter = (random01() * 2.0f - 1.0f) * dispersion * 7.0f;
-    target->step = std::pow(2.0f, (pitch + pitchScatter) / 12.0f);
-    if (random01() < dispersion * 0.35f)
+    target->step = 1.0f;
+    if (random01() < clamp01(parameters.reverse))
         target->step = -target->step;
     target->amp = 0.55f + 0.45f * random01();
     target->age = 0;
     target->length = grainSamples;
-    target->strideGate = dispersion > 0.02f ? 2 + static_cast<int>((1.0f - dispersion) * 10.0f) : 0;
+    target->strideGate = damage > 0.02f ? 2 + static_cast<int>((1.0f - damage) * 10.0f) : 0;
     target->stridePhase = static_cast<int>(randomU32() & 31u);
     target->active = true;
 }

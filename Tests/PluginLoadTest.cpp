@@ -66,15 +66,15 @@ int main(int argc, char** argv)
         return failure(8, "hosted latency should be zero");
 
     constexpr const char* parameterNames[] {
-        "Grain ms", "Density", "Pitch", "Position", "Dispersion", "Latch", "Freeze", "Feedback", "Mix", "Output"
+        "Grain ms", "Density", "Jitter", "Reverse", "Stutter", "Retrigger", "Freeze", "Damage", "Mix", "Output"
     };
     for (const auto* name : parameterNames)
         if (findParameter(*instance, name) == nullptr)
             return failure(9, "hosted parameter set is incomplete");
 
-    for (const auto* name : { "Grain ms", "Density", "Pitch", "Position", "Dispersion", "Feedback", "Mix", "Output" })
+    for (const auto* name : { "Grain ms", "Density", "Jitter", "Reverse", "Stutter", "Damage", "Mix", "Output" })
         findParameter(*instance, name)->setValueNotifyingHost(1.0f);
-    findParameter(*instance, "Latch")->setValueNotifyingHost(0.0f);
+    findParameter(*instance, "Retrigger")->setValueNotifyingHost(0.0f);
     findParameter(*instance, "Freeze")->setValueNotifyingHost(0.0f);
 
     juce::MemoryBlock state;
