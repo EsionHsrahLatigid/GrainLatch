@@ -1,0 +1,64 @@
+#pragma once
+
+#include "dsp/GranularCore.h"
+
+#include <juce_audio_processors/juce_audio_processors.h>
+#include <array>
+#include <atomic>
+
+class GrainLatchAudioProcessor final : public juce::AudioProcessor
+{
+public:
+    GrainLatchAudioProcessor();
+    ~GrainLatchAudioProcessor() override = default;
+
+    void prepareToPlay(double sampleRate, int maximumExpectedSamplesPerBlock) override;
+    void releaseResources() override;
+    void reset() override;
+    bool isBusesLayoutSupported(const BusesLayout& layouts) const override;
+    void processBlock(juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
+
+    juce::AudioProcessorEditor* createEditor() override;
+    bool hasEditor() const override { return true; }
+    const juce::String getName() const override { return JucePlugin_Name; }
+    bool acceptsMidi() const override { return false; }
+    bool producesMidi() const override { return false; }
+    bool isMidiEffect() const override { return false; }
+    double getTailLengthSeconds() const override { return 4.0; }
+
+    int getNumPrograms() override { return 1; }
+    int getCurrentProgram() override { return 0; }
+    void setCurrentProgram(int) override {}
+    const juce::String getProgramName(int) override { return {}; }
+    void changeProgramName(int, const juce::String&) override {}
+
+    void getStateInformation(juce::MemoryBlock&) override;
+    void setStateInformation(const void*, int) override;
+
+    void copyGrainSnapshot(grainlatch::dsp::GrainSnapshot& destination) const noexcept;
+
+    juce::AudioProcessorValueTreeState parameters;
+    static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
+
+private:
+    struct ParameterPointers
+    {
+        std::atomic<float>* grainMs = nullptr;
+        std::atomic<float>* density = nullptr;
+        std::atomic<float>* jitter = nullptr;
+        std::atomic<float>* reverse = nullptr;
+        std::atomic<float>* stutter = nullptr;
+        std::atomic<float>* freeze = nullptr;
+        std::atomic<float>* retrigger = nullptr;
+        std::atomic<float>* damage = nullptr;
+        std::atomic<float>* mix = nullptr;
+        std::atomic<float>* output = nullptr;
+    } parameter;
+
+    void cacheParameterPointers();
+    [[nodiscard]] grainlatch::dsp::GranularParameters readParameters() const noexcept;
+
+    std::array<grainlatch::dsp::GranularCore, 2> cores;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GrainLatchAudioProcessor)
+};
