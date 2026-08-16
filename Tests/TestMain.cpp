@@ -102,6 +102,56 @@ std::vector<float> render(GranularParameters params, const std::vector<float>& i
     return output;
 }
 
+std::vector<float> renderRetrigger(const std::vector<float>& input,
+                                   int retriggerSample,
+                                   bool holdHigh,
+                                   const std::vector<int>& partitions)
+{
+    GranularCore core;
+    core.prepare(48000.0, 1);
+    GranularParameters params;
+    params.grainMs = 80.0f;
+    params.density = 2.0f;
+    params.jitter = 0.0f;
+    params.reverse = 0.0f;
+    params.stutter = 0.0f;
+    params.damage = 0.0f;
+    params.mix = 1.0f;
+
+    std::vector<float> output;
+    output.reserve(input.size());
+
+    int cursor = 0;
+    int partitionIndex = 0;
+    while (cursor < static_cast<int>(input.size()))
+    {
+        const auto remaining = static_cast<int>(input.size()) - cursor;
+        const auto block = partitions.empty()
+            ? remaining
+            : std::min(remaining, std::max(1, partitions[static_cast<std::size_t>(partitionIndex++ % partitions.size())]));
+
+        for (int i = 0; i < block; ++i)
+        {
+            const auto sampleIndex = cursor + i;
+            params.retrigger = sampleIndex == retriggerSample || (holdHigh && sampleIndex >= retriggerSample) ? 1.0f : 0.0f;
+            output.push_back(core.processSample(input[static_cast<std::size_t>(sampleIndex)], params));
+        }
+
+        cursor += block;
+    }
+
+    return output;
+}
+
+float maxAbsDifference(const std::vector<float>& a, const std::vector<float>& b, int startSample)
+{
+    expect(a.size() == b.size(), "signals must have matching length");
+    float result = 0.0f;
+    for (std::size_t i = static_cast<std::size_t>(std::max(0, startSample)); i < a.size(); ++i)
+        result = std::max(result, std::abs(a[i] - b[i]));
+    return result;
+}
+
 void silence_stays_silent_without_held_grain()
 {
     GranularParameters params;
@@ -147,6 +197,66 @@ void extremes_are_harsh_but_bounded()
     expect(std::abs(metrics.dc) < 0.05f, "extreme granular settings should not become DC");
     expect(metrics.zeroCrossings > 1024, "extreme granular settings should not collapse into static output");
     expect(metrics.uniqueBuckets > 128, "extreme granular settings should have varied sample values");
+}
+
+void retrigger_edge_forces_deterministic_grain_launch()
+{
+    const auto input = seededNoise(48000 * 2);
+    constexpr int edgeSample = 24000;
+    const auto off = renderRetrigger(input, -1, false, { static_cast<int>(input.size()) });
+    const auto pulse = renderRetrigger(input, edgeSample, false, { static_cast<int>(input.size()) });
+    const auto held = renderRetrigger(input, edgeSample, true, { static_cast<int>(input.size()) });
+    const auto partitioned = renderRetrigger(input, edgeSample, true, { 17, 64, 511, 3, 1024, 29 });
+
+    expect(maxAbsDifference(off, pulse, edgeSample) > 0.001f,
+           "retrigger rising edge should change active granular output");
+    expect(maxAbsDifference(pulse, held, 0) == 0.0f,
+           "held retrigger gate should not repeatedly launch without a new rising edge");
+    expect(maxAbsDifference(held, partitioned, 0) == 0.0f,
+           "retrigger scheduling should be independent of block partitioning");
+
+    const auto metrics = measure(held);
+    expect(metrics.rms > 0.01f, "retriggered output should remain audible");
+    expect(metrics.peak <= 0.981f, "retriggered output should remain bounded");
+    expect(std::abs(metrics.dc) < 0.04f, "retriggered output should not build DC");
+    expect(metrics.uniqueBuckets > 96, "retriggered output should not collapse into a constant");
+}
+
+void retrigger_reset_and_silence_are_defined()
+{
+    GranularCore core;
+    core.prepare(48000.0, 1);
+    GranularParameters params;
+    params.grainMs = 80.0f;
+    params.density = 2.0f;
+    params.jitter = 0.0f;
+    params.mix = 1.0f;
+
+    for (const auto sample : sine(440.0f, 24000))
+        core.processSample(sample, params);
+
+    params.retrigger = 1.0f;
+    std::vector<float> first;
+    for (int i = 0; i < 4096; ++i)
+        first.push_back(core.processSample(0.0f, params));
+    expect(measure(first).rms > 0.01f, "retrigger should launch captured material before reset");
+
+    core.reset();
+    std::vector<float> silent;
+    for (int i = 0; i < 4096; ++i)
+        silent.push_back(core.processSample(0.0f, params));
+    const auto silentMetrics = measure(silent);
+    expect(silentMetrics.rms == 0.0f && silentMetrics.peak == 0.0f,
+           "reset should clear retrigger edge state, captured history, and active voices");
+
+    params.retrigger = 0.0f;
+    for (const auto sample : sine(330.0f, 24000))
+        core.processSample(sample, params);
+    params.retrigger = 1.0f;
+    std::vector<float> second;
+    for (int i = 0; i < 4096; ++i)
+        second.push_back(core.processSample(0.0f, params));
+    expect(measure(second).rms > 0.01f, "retrigger should work again after reset and a new capture");
 }
 
 void freeze_holds_capture_and_empty_freeze_is_silent()
@@ -207,6 +317,8 @@ int main()
         silence_stays_silent_without_held_grain();
         default_live_capture_is_audible_and_deterministic();
         extremes_are_harsh_but_bounded();
+        retrigger_edge_forces_deterministic_grain_launch();
+        retrigger_reset_and_silence_are_defined();
         freeze_holds_capture_and_empty_freeze_is_silent();
         reset_and_sample_rate_change_are_defined();
     }

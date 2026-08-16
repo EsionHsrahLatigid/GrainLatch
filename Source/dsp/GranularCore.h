@@ -102,11 +102,13 @@ private:
     float heldRmsAcc = 0.0f;
     int rmsCount = 0;
     bool wasFrozen = false;
+    bool wasRetriggering = false;
 
     unsigned randomU32() noexcept;
     float random01() noexcept;
-    void maybeLaunchGrain(const GranularParameters& parameters) noexcept;
+    void maybeLaunchGrain(const GranularParameters& parameters, bool forceLaunch) noexcept;
     void launchGrain(const GranularParameters& parameters) noexcept;
+    void scheduleNextGrain(const GranularParameters& parameters) noexcept;
     float readRingLinear(float position) const noexcept;
     void publishSnapshot(float inputRms, float wetRms, float heldRms, int active, bool frozen, bool recovery) noexcept;
 };

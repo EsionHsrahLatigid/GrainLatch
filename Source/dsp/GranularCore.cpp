@@ -93,6 +93,7 @@ void GranularCore::reset() noexcept
     heldRmsAcc = 0.0f;
     rmsCount = 0;
     wasFrozen = false;
+    wasRetriggering = false;
 }
 
 float GranularCore::processSample(float input, const GranularParameters& parameters) noexcept
@@ -113,7 +114,11 @@ float GranularCore::processSample(float input, const GranularParameters& paramet
     }
     wasFrozen = frozen;
 
-    maybeLaunchGrain(parameters);
+    const auto retriggering = sanitize(parameters.retrigger) >= 0.5f;
+    const auto retriggerEdge = retriggering && !wasRetriggering;
+    wasRetriggering = retriggering;
+
+    maybeLaunchGrain(parameters, retriggerEdge);
 
     float wet = 0.0f;
     int active = 0;
@@ -196,14 +201,26 @@ float GranularCore::random01() noexcept
     return static_cast<float>(randomU32() & 0x00ffffffu) / static_cast<float>(0x01000000u);
 }
 
-void GranularCore::maybeLaunchGrain(const GranularParameters& parameters) noexcept
+void GranularCore::maybeLaunchGrain(const GranularParameters& parameters, bool forceLaunch) noexcept
 {
-    const auto density = std::clamp(sanitize(parameters.density), 1.0f, 220.0f);
+    if (forceLaunch)
+    {
+        launchGrain(parameters);
+        scheduleNextGrain(parameters);
+        return;
+    }
+
     --nextGrainIn;
     if (nextGrainIn > 0)
         return;
 
     launchGrain(parameters);
+    scheduleNextGrain(parameters);
+}
+
+void GranularCore::scheduleNextGrain(const GranularParameters& parameters) noexcept
+{
+    const auto density = std::clamp(sanitize(parameters.density), 1.0f, 220.0f);
     const auto base = static_cast<int>(currentSampleRate / density);
     const auto jitter = (random01() * 2.0f - 1.0f) * clamp01(parameters.jitter);
     nextGrainIn = std::max(1, static_cast<int>(static_cast<float>(base) * (1.0f + jitter * 0.92f)));

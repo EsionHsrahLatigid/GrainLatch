@@ -2,10 +2,12 @@
 #include "PluginProcessor.h"
 
 #include <juce_events/juce_events.h>
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace
 {
@@ -43,6 +45,48 @@ bool checkFloatParameter(GrainLatchAudioProcessor& processor,
                             "float default should match");
     }
     return passed;
+}
+
+void setFloatParameter(GrainLatchAudioProcessor& processor, const char* id, float value)
+{
+    if (auto* parameter = dynamic_cast<juce::AudioParameterFloat*>(processor.parameters.getParameter(id)))
+        parameter->setValueNotifyingHost(parameter->convertTo0to1(value));
+}
+
+std::vector<float> processRetriggerProbe(bool retrigger)
+{
+    GrainLatchAudioProcessor processor;
+    processor.prepareToPlay(48000.0, 512);
+    setFloatParameter(processor, grainlatch::parameters::grainMs, 80.0f);
+    setFloatParameter(processor, grainlatch::parameters::density, 1.0f);
+    setFloatParameter(processor, grainlatch::parameters::jitter, 0.0f);
+    setFloatParameter(processor, grainlatch::parameters::reverse, 0.0f);
+    setFloatParameter(processor, grainlatch::parameters::stutter, 0.0f);
+    setFloatParameter(processor, grainlatch::parameters::damage, 0.0f);
+    setFloatParameter(processor, grainlatch::parameters::mix, 1.0f);
+
+    juce::MidiBuffer midi;
+    juce::AudioBuffer<float> capture(2, 24000);
+    for (int sample = 0; sample < capture.getNumSamples(); ++sample)
+    {
+        const auto value = static_cast<float>(0.22 * std::sin(2.0 * juce::MathConstants<double>::pi
+                                                             * 391.0 * sample / 48000.0));
+        capture.setSample(0, sample, value);
+        capture.setSample(1, sample, value);
+    }
+    processor.processBlock(capture, midi);
+
+    if (auto* parameter = processor.parameters.getParameter(grainlatch::parameters::retrigger))
+        parameter->setValueNotifyingHost(retrigger ? 1.0f : 0.0f);
+
+    juce::AudioBuffer<float> output(2, 4096);
+    output.clear();
+    processor.processBlock(output, midi);
+
+    std::vector<float> result(static_cast<std::size_t>(output.getNumSamples()));
+    for (int sample = 0; sample < output.getNumSamples(); ++sample)
+        result[static_cast<std::size_t>(sample)] = output.getSample(0, sample);
+    return result;
 }
 } // namespace
 
@@ -145,6 +189,19 @@ int main()
     }
     passed &= check(std::sqrt(sumSquares / static_cast<double>(generatedSamples * 2)) > 0.01,
                     "processor should produce audible live granular output");
+
+    const auto retriggerOff = processRetriggerProbe(false);
+    const auto retriggerOn = processRetriggerProbe(true);
+    float retriggerDiff = 0.0f;
+    float retriggerPeak = 0.0f;
+    for (std::size_t i = 0; i < retriggerOff.size(); ++i)
+    {
+        retriggerDiff = std::max(retriggerDiff, std::abs(retriggerOn[i] - retriggerOff[i]));
+        retriggerPeak = std::max(retriggerPeak, std::abs(retriggerOn[i]));
+        passed &= check(std::isfinite(retriggerOn[i]), "APVTS retrigger output should remain finite");
+    }
+    passed &= check(retriggerDiff > 0.001f, "APVTS retrigger should change active processor output");
+    passed &= check(retriggerPeak <= 0.981f, "APVTS retrigger output should remain bounded");
 
     processor->reset();
     juce::AudioBuffer<float> silence(2, 4096);
