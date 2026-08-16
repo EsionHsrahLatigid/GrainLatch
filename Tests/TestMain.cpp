@@ -12,6 +12,8 @@ namespace
 {
 using namespace grainlatch::dsp;
 
+static_assert(sizeof(GranularCore) < 64 * 1024, "GranularCore must fit on Windows default test stacks");
+
 struct Failure final : std::exception
 {
     explicit Failure(std::string messageIn) : message(std::move(messageIn)) {}

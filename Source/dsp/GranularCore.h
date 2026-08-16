@@ -4,6 +4,7 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 
 namespace grainlatch::dsp
 {
@@ -78,7 +79,9 @@ private:
         std::atomic<std::uint8_t> recovery { 0 };
     };
 
-    std::array<float, ringSize> ring {};
+    using RingBuffer = std::array<float, ringSize>;
+
+    std::unique_ptr<RingBuffer> ring;
     std::array<Grain, maxVoices> voices {};
     std::array<float, GrainSnapshot::columns * GrainSnapshot::rows> snapshotWrite {};
     mutable AtomicSnapshot snapshot {};

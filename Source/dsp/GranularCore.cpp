@@ -50,6 +50,7 @@ float unpackFloat(std::uint32_t bits) noexcept
 } // namespace
 
 GranularCore::GranularCore()
+    : ring(std::make_unique<RingBuffer>())
 {
     reset();
 }
@@ -63,7 +64,7 @@ void GranularCore::prepare(double sampleRate, int) noexcept
 
 void GranularCore::reset() noexcept
 {
-    ring.fill(0.0f);
+    ring->fill(0.0f);
     for (auto& voice : voices)
         voice = {};
     snapshotWrite.fill(0.0f);
@@ -100,7 +101,7 @@ float GranularCore::processSample(float input, const GranularParameters& paramet
     const auto frozen = parameters.freeze;
     if (!frozen)
     {
-        ring[static_cast<std::size_t>(writeIndex)] = input;
+        (*ring)[static_cast<std::size_t>(writeIndex)] = input;
         writeIndex = (writeIndex + 1) % usableRing;
         if (std::abs(input) > silenceThreshold)
             captureSamples = std::min(captureSamples + 1, usableRing);
@@ -265,8 +266,8 @@ float GranularCore::readRingLinear(float position) const noexcept
         index0 += usableRing;
     index0 %= usableRing;
     const auto index1 = (index0 + 1) % usableRing;
-    return ring[static_cast<std::size_t>(index0)] * (1.0f - frac)
-         + ring[static_cast<std::size_t>(index1)] * frac;
+    return (*ring)[static_cast<std::size_t>(index0)] * (1.0f - frac)
+         + (*ring)[static_cast<std::size_t>(index1)] * frac;
 }
 
 void GranularCore::publishSnapshot(float inputRms, float wetRms, float heldRms, int active, bool frozen, bool recovery) noexcept
@@ -278,7 +279,7 @@ void GranularCore::publishSnapshot(float inputRms, float wetRms, float heldRms, 
         auto index = writeIndex - lookback;
         while (index < 0)
             index += usableRing;
-        const auto value = std::clamp(std::abs(ring[static_cast<std::size_t>(index)]) * 8.0f, 0.0f, 1.0f);
+        const auto value = std::clamp(std::abs((*ring)[static_cast<std::size_t>(index)]) * 8.0f, 0.0f, 1.0f);
         const auto litRows = static_cast<int>(std::round(value * static_cast<float>(GrainSnapshot::rows)));
         for (int row = 0; row < GrainSnapshot::rows; ++row)
             snapshotWrite[static_cast<std::size_t>((GrainSnapshot::rows - 1 - row) * GrainSnapshot::columns + column)] =
